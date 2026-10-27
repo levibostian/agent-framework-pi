@@ -1,0 +1,24 @@
+{
+  "name": "pi-subagents",
+  "version": "0.1.0",
+  "description": "Run agents from the agent CLI, from inside pi",
+  "type": "module",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": ["./index.ts"]
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "1.4.0",
+    "@types/bun": "latest",
+    "typebox": "1.3.27",
+    "typescript": "^5.7.0"
+  }
+}
