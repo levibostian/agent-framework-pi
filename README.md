@@ -40,15 +40,46 @@ command here and from a terminal anywhere else.
 ## Quick start
 
 ```sh
-# 1. Install this extension.
-pi install git:github.com/levi/agent-framework-pi
+# 1. Remove the bundled subagents extension first — see below.
+rm -rf ~/.pi/agent/extensions/subagents
+ln -sfn ~/code/agent-framework/src/index.ts ~/.pi/agent/bin/agent
 
-# 2. Check the CLI can see your agents.
+# 2. Install this extension.
+pi install ~/code/agent-framework-pi
+
+# 3. Check the CLI can see your agents.
 agent list
 
-# 3. In pi, run /reload, then:
+# 4. In pi, run /reload, then:
 /agent:reviewer review src/auth.ts and list the concrete fixes
 ```
+
+### Migrating from the bundled `subagents` extension
+
+If you already used `~/.pi/agent/extensions/subagents/`, remove it before installing
+this one. Both register a tool named `subagent`, and pi refuses to load the second:
+
+```
+Error: Failed to load extension "…/agent-framework-pi/index.ts":
+  Tool "subagent" conflicts with …/extensions/subagents/index.ts
+```
+
+Its agents lived in `~/.pi/agent/subagents/<name>/settings.json` + `SYSTEM.md`, with
+`tier:<name>` model references. The `agent` CLI keeps its agents in `~/.agent/<name>/`
+(see its README for the schema). Both layouts describe the same things:
+
+| Old extension | `agent` CLI |
+|---|---|
+| `settings.json` `model: "tier:medium"` | `agent.yaml` `model: ":medium:"` |
+| `SYSTEM.md` | `system: \|` in the config, or `system-cmd:` |
+| `settings.json` `tools` | `tools:` in the config |
+| `settings.json` `description` | `description:` in the config |
+| `settings.json` `provider`, `thinking` | Not supported — set them in pi's own settings |
+| `~/.pi/agent/subagents/models.json` | `~/.agent/models.json` |
+
+`~/.pi/agent/bin/agent` is usually a symlink to the old extension's bundled
+`cli/agent.mjs`. Repoint it at the new CLI, or the `agent` command still runs the old
+one.
 
 If the CLI is not on your `PATH`, point at it explicitly:
 

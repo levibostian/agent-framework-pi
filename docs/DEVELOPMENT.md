@@ -105,15 +105,18 @@ explanation.
   drives the real registration path with a mocked `ExtensionAPI`, which is what gives
   `index.ts` full line coverage. `bun test --coverage` should stay above 99%.
 - **Verifying against real pi** (needs auth and a model, so it is not a committed test):
-  load the extension with `pi -ne -e <this repo>` — `-ne` matters, because it disables
-  extension *discovery* so the old `subagents/` extension cannot load alongside and
-  double-register `/agent:*`. Point `AGENT_BIN` at a recording script to confirm the argv,
-  or at a real CLI and use `--mode rpc` to script a `/agent:<name>` prompt.
+  load the extension with `pi -ne -e <this repo>`. Point `AGENT_BIN` at a recording shell
+  script to confirm the argv, or at a real CLI and use `--mode rpc` to script a
+  `/agent:<name>` prompt. Print mode cannot be used for the command path: the handler
+  calls `sendUserMessage` without awaiting it, so pi exits before that turn runs. Use
+  RPC, where the process stays alive, or drive the `subagent` tool with the model.
 - **Do not add `--no-skills`, `-a`, or any other pi flag on the subagent's behalf.** The
   subagent's flags belong to the `agent` CLI; adding them here would split the two
   definitions again.
 - **Two extension instances must never be installed at once.** This one and
-  `~/.pi/agent/extensions/subagents/` register the same command names and the same
-  `subagent` tool.
+  `~/.pi/agent/extensions/subagents/` both register a tool named `subagent`, and pi
+  hard-fails the second one with `Tool "subagent" conflicts with …`. Loading this
+  extension with `pi -e <repo>` while the old one is installed is a quick way to trip
+  that; add `-ne` to disable discovery when testing.
 - **`pi.exec` needs an absolute path or a `PATH` entry.** It runs with `shell: false`, so
   `AGENT_BIN` must be executable and carry a shebang.
