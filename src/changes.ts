@@ -37,16 +37,14 @@ export function resetChanges(): void {
 
 /** Live-track one tool call from the `tool_call` hook, before the change lands. */
 export function rememberToolCall(name: string, args: Record<string, unknown>): void {
-  const change = changeFromToolCall(name, args, readFileOrEmpty);
+  const change = changeFromToolCall(name, args, (path) => {
+    try {
+      return readFileSync(path, "utf8");
+    } catch {
+      return ""; // A file that does not exist yet is a pure addition.
+    }
+  });
   if (change) sessionChanges.push(change);
-}
-
-function readFileOrEmpty(path: string): string {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return ""; // A file that does not exist yet is a pure addition.
-  }
 }
 
 /**

@@ -14,14 +14,13 @@ export interface AgentEntry {
   dir: string;
 }
 
-function asText(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function isAgentEntry(value: unknown): value is { name: string; dir: string; description?: unknown } {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+/** One entry of `agent list --json`, or undefined when the shape is not one. */
+function toAgentEntry(value: unknown): AgentEntry | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   const entry = value as Record<string, unknown>;
-  return typeof entry.name === "string" && typeof entry.dir === "string";
+  if (typeof entry.name !== "string" || typeof entry.dir !== "string") return undefined;
+  const description = typeof entry.description === "string" ? entry.description.trim() : "";
+  return { name: entry.name, dir: entry.dir, description: description || undefined };
 }
 
 /**
@@ -56,8 +55,8 @@ export async function listAgents(exec: ExecFn, bin: string): Promise<AgentEntry[
   }
 
   return parsed
-    .filter(isAgentEntry)
-    .map((entry) => ({ name: entry.name, dir: entry.dir, description: asText(entry.description) }))
+    .map(toAgentEntry)
+    .filter((entry): entry is AgentEntry => entry !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

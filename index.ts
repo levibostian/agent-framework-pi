@@ -11,13 +11,16 @@
  */
 
 import { Type, type Static } from "typebox";
-import type { ExtensionAPI, ExtensionCommandContext, ExecResult } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { listAgents, runTask, type AgentEntry, type ExecFn } from "./src/agent-cli.ts";
 import { prepareTask, rememberToolCall, resetChanges } from "./src/changes.ts";
 import { answerOf, failureText } from "./src/runner.ts";
 
 /** Slash-command names allow no spaces or colons, and neither does an agent name. */
 const VALID_NAME = /^[\w.-]+$/;
+
+/** One status line is shared by the command and the tool, so they overwrite each other. */
+const STATUS_KEY = "subagent";
 
 /** The model-callable tool, present only when at least one agent opts in. */
 const SubagentParams = Type.Object({
@@ -27,16 +30,6 @@ const SubagentParams = Type.Object({
       "The task to delegate. The subagent cannot see this conversation, so include the files and context it needs.",
   }),
 });
-
-function buildToolDescription(agents: AgentEntry[]): string {
-  return [
-    "Delegate a task to a specialized subagent. It runs in its own isolated pi process and returns only its final answer.",
-    "The subagent cannot see this conversation — put everything it needs (file paths, the exact scope, what you already changed) in `task`.",
-    "",
-    "Available subagents:",
-    ...agents.map((agent) => `- ${agent.name}: ${agent.description}`),
-  ].join("\n");
-}
 
 export default async function (pi: ExtensionAPI) {
   const exec: ExecFn = (command, args, options) => pi.exec(command, args, options);
@@ -71,7 +64,19 @@ export default async function (pi: ExtensionAPI) {
           return;
         }
         ctx.ui.notify(`Running subagent "${agent.name}"…`, "info");
-        await runAgentCommand(pi, exec, bin, ctx, agent.name, task);
+
+        ctx.ui.setStatus(STATUS_KEY, `running ${agent.name}…`);
+        try {
+          const result = await runTask(exec, bin, agent.name, prepareTask(ctx, task), ctx.cwd, ctx.signal);
+          const answer = answerOf(result);
+          const message =
+            answer === undefined ? failureText(agent.name, result) : `[subagent "${agent.name}" output]\n${answer}`;
+          // Idle → start a turn now; streaming → queue so the main model still sees it.
+          if (ctx.isIdle()) pi.sendUserMessage(message);
+          else pi.sendUserMessage(message, { deliverAs: "followUp" });
+        } finally {
+          ctx.ui.setStatus(STATUS_KEY, undefined);
+        }
       },
     });
   }
@@ -83,7 +88,13 @@ export default async function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "subagent",
     label: "Subagent",
-    description: buildToolDescription(callable),
+    description: [
+      "Delegate a task to a specialized subagent. It runs in its own isolated pi process and returns only its final answer.",
+      "The subagent cannot see this conversation — put everything it needs (file paths, the exact scope, what you already changed) in `task`.",
+      "",
+      "Available subagents:",
+      ...callable.map((agent) => `- ${agent.name}: ${agent.description}`),
+    ].join("\n"),
     promptSnippet: "Delegate a task to a specialized subagent",
     promptGuidelines: [
       "After you finish a set of file edits, call the `subagent` tool for any listed subagent whose description says to use it after editing files, passing the exact files you edited, then apply its suggestions.",
@@ -104,39 +115,21 @@ export default async function (pi: ExtensionAPI) {
         };
       }
 
-      ctx.ui.setStatus("subagent", `running ${agent.name}…`);
+      ctx.ui.setStatus(STATUS_KEY, `running ${agent.name}…`);
       try {
         const result = await runTask(exec, bin, agent.name, prepareTask(ctx, params.task), ctx.cwd, signal);
         const answer = answerOf(result);
         if (answer !== undefined) {
           return { content: [{ type: "text" as const, text: answer }], details: undefined };
         }
-        return { content: [{ type: "text" as const, text: failureText(agent.name, result) }], details: undefined, isError: true };
+        return {
+          content: [{ type: "text" as const, text: failureText(agent.name, result) }],
+          details: undefined,
+          isError: true,
+        };
       } finally {
-        ctx.ui.setStatus("subagent", undefined);
+        ctx.ui.setStatus(STATUS_KEY, undefined);
       }
     },
   });
-}
-
-/** Run an agent for a slash command and hand its answer back to the session. */
-async function runAgentCommand(
-  pi: ExtensionAPI,
-  exec: ExecFn,
-  bin: string,
-  ctx: ExtensionCommandContext,
-  name: string,
-  task: string,
-): Promise<void> {
-  ctx.ui.setStatus("subagent", `running ${name}…`);
-  try {
-    const result = await runTask(exec, bin, name, prepareTask(ctx, task), ctx.cwd, ctx.signal);
-    const answer = answerOf(result);
-    const message = answer === undefined ? failureText(name, result) : `[subagent "${name}" output]\n${answer}`;
-    // Idle → start a turn now; streaming → queue so the main model still sees it.
-    if (ctx.isIdle()) pi.sendUserMessage(message);
-    else pi.sendUserMessage(message, { deliverAs: "followUp" });
-  } finally {
-    ctx.ui.setStatus("subagent", undefined);
-  }
 }

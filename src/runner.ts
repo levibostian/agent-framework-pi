@@ -1,10 +1,7 @@
 import type { ExecResult } from "@earendil-works/pi-coding-agent";
 
-/** Subagent output above this is cut before it reaches the model. */
-export const OUTPUT_CAP_BYTES = 50 * 1024;
-
 /** Cap model-facing output, and say how much was dropped so the model can ask for less. */
-export function truncateOutput(text: string, cap: number = OUTPUT_CAP_BYTES): string {
+export function truncateOutput(text: string, cap = 50 * 1024): string {
   const bytes = Buffer.byteLength(text, "utf8");
   if (bytes <= cap) return text;
 
