@@ -159,6 +159,15 @@ describe("the subagent tool", () => {
     expect(tool.promptGuidelines?.join(" ")).toContain("After you finish a set of file edits");
   });
 
+  test("tells the caller its own instructions outrank subagent findings", async () => {
+    const { tools } = await load();
+    const guidelines = tools.get("subagent")!.promptGuidelines!.join(" ").toLowerCase();
+
+    expect(guidelines).toContain("advisory");
+    expect(guidelines).toContain("never outranks");
+    expect(guidelines).toContain("reference");
+  });
+
   test("returns the agent's answer", async () => {
     const { tools, runCalls } = await load({ run: () => execResult({ stdout: "  findings  \n" }) });
 
