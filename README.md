@@ -23,7 +23,10 @@ command here and from a terminal anywhere else.
 - **Isolated context** — each run is a fresh headless `pi` process. Your session receives
   the final message and nothing else.
 - **Main agent continues** — the answer is added to your session and starts a turn, so a
-  review agent's findings can be applied immediately.
+  review agent's findings land in your session as advice you can act on.
+- **Advisory by default** — the caller is told a subagent's findings are input, not
+  instructions: they never outrank what you asked for, so a "match this existing file"
+  request wins over a style suggestion that would break the match.
 - **Diff-scoped tasks** — every subagent task carries an index of the files this session
   changed plus a path to the full diff, so it reviews the change rather than re-reading
   the repo.
