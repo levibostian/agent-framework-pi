@@ -156,7 +156,16 @@ describe("the subagent tool", () => {
 
     expect(tool.description).toContain("- reviewer: Reviews diffs.");
     expect(tool.description).not.toContain("quiet");
-    expect(tool.promptGuidelines?.join(" ")).toContain("After you finish a set of file edits");
+    expect(tool.promptGuidelines?.join(" ")).toContain("description matches");
+  });
+
+  test("leaves the call to the model instead of mandating a run after edits", async () => {
+    const { tools } = await load();
+    const guidelines = tools.get("subagent")!.promptGuidelines!.join(" ").toLowerCase();
+
+    expect(guidelines).toContain("no agent is required to run");
+    expect(guidelines).toContain("any point");
+    expect(guidelines).not.toContain("after you finish a set of file edits");
   });
 
   test("tells the caller its own instructions outrank subagent findings", async () => {

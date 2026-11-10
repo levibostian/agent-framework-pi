@@ -132,9 +132,9 @@ Agents with a `description` are listed in a single `subagent` tool the model can
 their `/agent:<name>` command still works. Agents without one never appear there.
 
 The description is the trigger, exactly like a skill description: phrase it as *when* to
-use the agent, not just what it does. While the tool is active, pi also tells the model to
-call a listed agent whose description says to use it after editing files — that is what
-makes a checker run automatically after edits.
+use the agent, not just what it does. While the tool is active, pi tells the model to
+call a listed agent whenever its description matches the work — at any point, not only
+after edits. Nothing runs automatically, and the model decides.
 
 ## Configuration
 
